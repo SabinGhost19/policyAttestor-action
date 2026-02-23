@@ -1,3 +1,10 @@
+## [1.0.5](https://github.com/SabinGhost19/policyAttestor-action/compare/v1.0.4...v1.0.5) (2026-02-23)
+
+
+### Bug Fixes
+
+* attestation default name ([4213d02](https://github.com/SabinGhost19/policyAttestor-action/commit/4213d02e6e48e4efc0ff5a12e3423f12193947da))
+
 ## [1.0.3](https://github.com/SabinGhost19/policyAttestor-action/compare/v1.0.2...v1.0.3) (2026-02-23)
 
 
