@@ -18,10 +18,9 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'renovate.json'
-      - '.github/renovate.json'
-      - '.github/workflows/renovate.yaml'
+  pull_request:
+    branches:
+      - main
 
 concurrency:
   group: renovate
