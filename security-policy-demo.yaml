@@ -1,0 +1,22 @@
+policyVersion: "1.0"
+workloadIdentity: "demo-api"
+
+securityBoundaries:
+  network:
+    allowGlobalInternet: false
+    allowedEgressNamespaces: 
+      - "database"
+      - "internal-services"
+    restrictedPorts: 
+      - 22 
+      - 3306
+      
+  secrets:
+    requireZeroTrustSecrets: true
+    allowedVaultPaths:
+      - "secret/data/prod/postgres/demo-api"
+      - "secret/data/common/api-keys"
+      
+  runtime:
+    allowPrivilegeEscalation: false
+    runAsRoot: false
