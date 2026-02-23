@@ -14,7 +14,7 @@ inputs:
   attestation-type:
     description: "Cosign attestation type"
     required: false
-    default: "custom-zta-policy"
+    default: "https://devsecops.licenta.ro/attestations/custom-zta-policy/v1"
 
 runs:
   using: "composite"
@@ -39,7 +39,13 @@ runs:
       env:
         COSIGN_EXPERIMENTAL: "false"
       run: |
+        ATTESTATION_TYPE="${{ inputs.attestation-type }}"
+
+        if [ -z "$ATTESTATION_TYPE" ] || [ "$ATTESTATION_TYPE" = "custom-zta-policy" ]; then
+          ATTESTATION_TYPE="https://devsecops.licenta.ro/attestations/custom-zta-policy/v1"
+        fi
+
         cosign attest --yes \
           --predicate /tmp/zta-policy-predicate.json \
-          --type "${{ inputs.attestation-type }}" \
+          --type "$ATTESTATION_TYPE" \
           "${{ inputs.image }}"
