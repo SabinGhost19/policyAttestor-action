@@ -1,3 +1,10 @@
+## [1.0.6](https://github.com/SabinGhost19/policyAttestor-action/compare/v1.0.5...v1.0.6) (2026-02-23)
+
+
+### Bug Fixes
+
+* semantic realease config ([8b72cf5](https://github.com/SabinGhost19/policyAttestor-action/commit/8b72cf52fe7930c039b6ca604134668ba6e9b38c))
+
 ## [1.0.5](https://github.com/SabinGhost19/policyAttestor-action/compare/v1.0.4...v1.0.5) (2026-02-23)
 
 
