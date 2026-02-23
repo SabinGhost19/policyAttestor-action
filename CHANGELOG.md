@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/SabinGhost19/policyAttestor-action/compare/v1.0.2...v1.0.3) (2026-02-23)
+
+
+### Bug Fixes
+
+* **ci:** add renovate .json ([5476864](https://github.com/SabinGhost19/policyAttestor-action/commit/5476864373ae9ae98a60dd5a0dd9f565191bbfb7))
+
 ## [1.0.1](https://github.com/SabinGhost19/policyAttestor-action/compare/v1.0.0...v1.0.1) (2026-02-23)
 
 
