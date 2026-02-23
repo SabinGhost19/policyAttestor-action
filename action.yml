@@ -1,0 +1,45 @@
+name: "ZTA Policy Attestor"
+description: "Convert security-policy YAML to JSON and attach it as a Cosign attestation"
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  image:
+    description: "Immutable image reference, recommended digest form ghcr.io/org/img@sha256:..."
+    required: true
+  policy-path:
+    description: "Path to security-policy.yaml"
+    required: true
+  attestation-type:
+    description: "Cosign attestation type"
+    required: false
+    default: "custom-zta-policy"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Ensure yq is available
+      shell: bash
+      run: |
+        if ! command -v yq >/dev/null 2>&1; then
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.6/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+        fi
+
+    - name: Convert policy YAML to JSON predicate
+      shell: bash
+      run: |
+        test -f "${{ inputs.policy-path }}"
+        yq -o=json '.' "${{ inputs.policy-path }}" > /tmp/zta-policy-predicate.json
+        cat /tmp/zta-policy-predicate.json | jq . >/dev/null
+
+    - name: Attest policy with Cosign keyless
+      shell: bash
+      env:
+        COSIGN_EXPERIMENTAL: "false"
+      run: |
+        cosign attest --yes \
+          --predicate /tmp/zta-policy-predicate.json \
+          --type "${{ inputs.attestation-type }}" \
+          "${{ inputs.image }}"
