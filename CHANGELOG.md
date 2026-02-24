@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/SabinGhost19/policyAttestor-action/compare/v1.0.6...v1.1.0) (2026-02-24)
+
+
+### Features
+
+* hash feature attestation added ([e80da76](https://github.com/SabinGhost19/policyAttestor-action/commit/e80da76ffce5f7c537b8b7c2308ed0adf22a448f))
+
 ## [1.0.6](https://github.com/SabinGhost19/policyAttestor-action/compare/v1.0.5...v1.0.6) (2026-02-23)
 
 
