@@ -3,7 +3,9 @@
 ## Overview
 The **ZTA Policy Attestor** is a custom GitHub Action designed for Zero-Trust supply chain security. It cryptographically binds a set of infrastructure and runtime security boundaries directly to a Docker image. 
 
-This action reads a developer-friendly `.yaml` security policy, automatically converts it into a strict `.json` payload, and leverages **Sigstore Cosign** (Keyless/OIDC) to attach it to the image in the OCI registry as a custom in-toto attestation (`custom-zta-policy`). Kubernetes Admission Controllers or Operators can then verify this attestation at deployment time to prevent runtime drift and privilege escalation.
+This action reads a developer-friendly `.yaml` security policy, automatically converts it into a strict `.json` payload, and leverages **Sigstore Cosign** (Keyless/OIDC) to attach it to the image in the OCI registry as a custom in-toto attestation.
+
+If you provide `manifest-dir`, the action also computes a canonical SHA-256 hash of the `ZeroTrustApplication.spec` and injects it into the predicate as `expected_infra_hash`. This allows the operator to enforce strict GitOps manifest integrity at deploy/runtime.
 
 ## Prerequisites
 To use this action, your GitHub Actions workflow must have the necessary permissions to generate OIDC tokens (for Keyless signing) and write to the container registry.
@@ -21,10 +23,19 @@ permissions:
 | --- | --- | --- | --- |
 | `image` | **Yes** | The full OCI registry path to the Docker image. **Must include the SHA256 digest**, not a tag. | `ghcr.io/user/app@sha256:123...` |
 | `policy-path` | **Yes** | The relative path to the YAML security policy file in your repository. | `./security-policy.yaml` |
+| `manifest-dir` | No | Directory containing GitOps manifests. The action finds YAML files, extracts exactly one `ZeroTrustApplication.spec`, computes SHA-256, and injects `expected_infra_hash` into the attestation predicate. | `./k8s-repo/demo-api` |
+| `attestation-type` | No | Predicate type used by `cosign attest`. Defaults to a URI form accepted by Cosign. | `https://devsecops.licenta.ro/attestations/custom-zta-policy/v1` |
+
+## Output Behavior
+
+- Always attests the policy payload generated from `policy-path`.
+- When `manifest-dir` is provided, enriches payload with `expected_infra_hash`.
+- Signs and uploads attestation to OCI registry bound to the immutable image digest.
+- Uses keyless OIDC signing (`id-token: write` required).
 
 ## Example Usage
 
-Below is a complete workflow example demonstrating how to build an image and attach the ZTA security policy.
+### Policy only
 
 ```yaml
 name: Build and Attest
@@ -61,10 +72,56 @@ jobs:
           tags: ghcr.io/${{ github.repository_owner }}/demo-api:${{ github.sha }}
 
       - name: Attach ZTA Security Attestation
-        uses: SabinGhost19/zta-policy-attestor@v1.0.0
+        uses: SabinGhost19/policyAttestor-action@v1
         with:
           image: ghcr.io/${{ github.repository_owner }}/demo-api@${{ steps.build-image.outputs.digest }}
           policy-path: ./security-policy.yaml
+          attestation-type: https://devsecops.licenta.ro/attestations/custom-zta-policy/v1
+```
+
+### Policy + strict manifest hash (separate config repo)
+
+```yaml
+name: Build and Attest (Policy + Hash)
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  build-and-secure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout app repository
+        uses: actions/checkout@v4
+
+      - name: Checkout GitOps manifests repository
+        uses: actions/checkout@v4
+        with:
+          repository: SabinGhost19/my-k8s-manifests
+          ref: main
+          path: k8s-repo
+
+      - name: Build and Push Docker Image
+        id: build-image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/demo-api:${{ github.sha }}
+
+      - name: Attach ZTA Security Attestation (with expected_infra_hash)
+        uses: SabinGhost19/policyAttestor-action@v1
+        with:
+          image: ghcr.io/${{ github.repository_owner }}/demo-api@${{ steps.build-image.outputs.digest }}
+          policy-path: ./security-policy.yaml
+          manifest-dir: ./k8s-repo/demo-api
+          attestation-type: https://devsecops.licenta.ro/attestations/custom-zta-policy/v1
 ```
 
 ## Specifications: `security-policy.yaml` (The "Cryptographic Backpack")
@@ -72,6 +129,8 @@ jobs:
 ### Role of the File
 The `security-policy.yaml` file represents the security contract of your application. This file defines the **maximum privileges** that your Docker image can request in the Kubernetes cluster.
 During the CI/CD pipeline, this file is converted to JSON, cryptographically signed, and attached to the Docker image. The Zero-Trust Operator will reject any deployment that attempts to request more privileges at runtime than those declared here.
+
+When strict hash mode is enabled in `SupplyChainAttestation.spec.strictManifestHash`, the Operator also compares the runtime `spec` hash with `expected_infra_hash` from this attestation.
 
 ### Structure and Fields
 
