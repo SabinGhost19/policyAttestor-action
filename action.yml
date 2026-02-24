@@ -11,6 +11,9 @@ inputs:
   policy-path:
     description: "Path to security-policy.yaml"
     required: true
+  manifest-dir:
+    description: "Optional directory containing GitOps manifests used to compute expected_infra_hash from ZeroTrustApplication spec"
+    required: false
   attestation-type:
     description: "Cosign attestation type"
     required: false
@@ -27,12 +30,39 @@ runs:
           sudo chmod +x /usr/local/bin/yq
         fi
 
-    - name: Convert policy YAML to JSON predicate
+    - name: Build policy predicate and optional infra hash
       shell: bash
       run: |
         test -f "${{ inputs.policy-path }}"
         yq -o=json '.' "${{ inputs.policy-path }}" > /tmp/zta-policy-predicate.json
         cat /tmp/zta-policy-predicate.json | jq . >/dev/null
+
+        MANIFEST_DIR="${{ inputs.manifest-dir }}"
+        if [ -n "$MANIFEST_DIR" ]; then
+          test -d "$MANIFEST_DIR"
+
+          mapfile -t YAML_FILES < <(find "$MANIFEST_DIR" -type f \( -name '*.yaml' -o -name '*.yml' \) | sort)
+          if [ ${#YAML_FILES[@]} -eq 0 ]; then
+            echo "No YAML files found in manifest-dir: $MANIFEST_DIR" >&2
+            exit 1
+          fi
+
+          ZTA_SPECS_JSON="$(yq ea -o=json '[select(.kind == "ZeroTrustApplication") | .spec]' "${YAML_FILES[@]}")"
+          SPEC_COUNT="$(printf '%s' "$ZTA_SPECS_JSON" | jq 'length')"
+          if [ "$SPEC_COUNT" -ne 1 ]; then
+            echo "manifest-dir must contain exactly one ZeroTrustApplication spec; found: $SPEC_COUNT" >&2
+            exit 1
+          fi
+
+          CANONICAL_SPEC="$(printf '%s' "$ZTA_SPECS_JSON" | jq -c -S '.[0]')"
+          INFRA_HASH="$(printf '%s' "$CANONICAL_SPEC" | sha256sum | awk '{print $1}')"
+
+          jq --arg hash "$INFRA_HASH" '. + {expected_infra_hash: $hash}' /tmp/zta-policy-predicate.json > /tmp/final-predicate.json
+        else
+          cp /tmp/zta-policy-predicate.json /tmp/final-predicate.json
+        fi
+
+        cat /tmp/final-predicate.json | jq . >/dev/null
 
     - name: Attest policy with Cosign keyless
       shell: bash
@@ -46,6 +76,6 @@ runs:
         fi
 
         cosign attest --yes \
-          --predicate /tmp/zta-policy-predicate.json \
+          --predicate /tmp/final-predicate.json \
           --type "$ATTESTATION_TYPE" \
           "${{ inputs.image }}"
