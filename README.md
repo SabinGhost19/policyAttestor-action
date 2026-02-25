@@ -5,7 +5,7 @@ The **ZTA Policy Attestor** is a custom GitHub Action designed for Zero-Trust su
 
 This action reads a developer-friendly `.yaml` security policy, automatically converts it into a strict `.json` payload, and leverages **Sigstore Cosign** (Keyless/OIDC) to attach it to the image in the OCI registry as a custom in-toto attestation.
 
-If you provide `manifest-dir`, the action also computes a canonical SHA-256 hash of the `ZeroTrustApplication.spec` and injects it into the predicate as `expected_infra_hash`. This allows the operator to enforce strict GitOps manifest integrity at deploy/runtime.
+If you provide `manifest-dir`, the action also computes a canonical SHA-256 hash of the `ZeroTrustApplication.spec` and injects it into the predicate as `expected_infra_hash`. By default, it normalizes `.spec.image` to the current `image` input (`sync-manifest-image: true`) so the hash matches the newly built digest. This allows the operator to enforce strict GitOps manifest integrity at deploy/runtime.
 
 ## Prerequisites
 To use this action, your GitHub Actions workflow must have the necessary permissions to generate OIDC tokens (for Keyless signing) and write to the container registry.
@@ -24,6 +24,7 @@ permissions:
 | `image` | **Yes** | The full OCI registry path to the Docker image. **Must include the SHA256 digest**, not a tag. | `ghcr.io/user/app@sha256:123...` |
 | `policy-path` | **Yes** | The relative path to the YAML security policy file in your repository. | `./security-policy.yaml` |
 | `manifest-dir` | No | Directory containing GitOps manifests. The action finds YAML files, extracts exactly one `ZeroTrustApplication.spec`, computes SHA-256, and injects `expected_infra_hash` into the attestation predicate. | `./k8s-repo/demo-api` |
+| `sync-manifest-image` | No | Defaults to `true`. When enabled, hash computation uses the current `image` input as `ZeroTrustApplication.spec.image`, avoiding digest drift between freshly built image and manifest snapshot. | `true` |
 | `attestation-type` | No | Predicate type used by `cosign attest`. Defaults to a URI form accepted by Cosign. | `https://devsecops.licenta.ro/attestations/custom-zta-policy/v1` |
 
 ## Output Behavior

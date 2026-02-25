@@ -14,6 +14,10 @@ inputs:
   manifest-dir:
     description: "Optional directory containing GitOps manifests used to compute expected_infra_hash from ZeroTrustApplication spec"
     required: false
+  sync-manifest-image:
+    description: "When true and manifest-dir is set, compute expected_infra_hash using inputs.image as ZeroTrustApplication.spec.image"
+    required: false
+    default: "true"
   attestation-type:
     description: "Cosign attestation type"
     required: false
@@ -54,7 +58,11 @@ runs:
             exit 1
           fi
 
-          CANONICAL_SPEC="$(printf '%s' "$ZTA_SPECS_JSON" | jq -c -S '.[0]')"
+          if [ "${{ inputs.sync-manifest-image }}" = "true" ]; then
+            CANONICAL_SPEC="$(printf '%s' "$ZTA_SPECS_JSON" | jq -c -S --arg image "${{ inputs.image }}" '.[0] | .image = $image')"
+          else
+            CANONICAL_SPEC="$(printf '%s' "$ZTA_SPECS_JSON" | jq -c -S '.[0]')"
+          fi
           INFRA_HASH="$(printf '%s' "$CANONICAL_SPEC" | sha256sum | awk '{print $1}')"
 
           jq --arg hash "$INFRA_HASH" '. + {expected_infra_hash: $hash}' /tmp/zta-policy-predicate.json > /tmp/final-predicate.json
