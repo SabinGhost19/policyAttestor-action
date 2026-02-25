@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/SabinGhost19/policyAttestor-action/compare/v1.1.0...v1.2.0) (2026-02-25)
+
+
+### Features
+
+* canonical hash with new image digest ([62a82c2](https://github.com/SabinGhost19/policyAttestor-action/commit/62a82c291c70715ca59029df0c45528deba36239))
+
 # [1.1.0](https://github.com/SabinGhost19/policyAttestor-action/compare/v1.0.6...v1.1.0) (2026-02-24)
 
 
